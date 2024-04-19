@@ -318,7 +318,6 @@ function getRequestOptions() {
 }
 function createHttpClient() {
     const token = process.env['BLACKSMITH_CACHE_TOKEN'];
-    core.debug(`BLACKSMITH_CACHE_TOKEN: ${token}`);
     const bearerCredentialHandler = new auth_1.BearerCredentialHandler(token !== null && token !== void 0 ? token : '');
     return new http_client_1.HttpClient('useblacksmith/cache', [bearerCredentialHandler], getRequestOptions());
 }
@@ -992,6 +991,7 @@ function downloadCacheHttpClient(archiveLocation, archivePath) {
             yield fdesc.sync();
             progressLogger = new DownloadProgress(fileSize);
             progressLogger.startDisplayTimer();
+            core.info(`Downloading ${archivePath}`);
             // Divvy up the download into chunks based on CONCURRENCY
             const chunkSize = Math.ceil(fileSize / CONCURRENCY);
             const chunkRanges = [];
@@ -1017,9 +1017,21 @@ function downloadCacheHttpClient(archiveLocation, archivePath) {
             }));
             yield Promise.all(downloads);
         }
+        catch (err) {
+            core.warning(`Failed to download cache: ${err}`);
+            throw err;
+        }
         finally {
-            yield fdesc.close();
+            // Stop the progress logger regardless of whether the download succeeded or failed.
+            // Not doing this will cause the entire action to halt if the download fails.
             progressLogger === null || progressLogger === void 0 ? void 0 : progressLogger.stopDisplayTimer();
+            try {
+                yield fdesc.close();
+            }
+            catch (err) {
+                // Intentionally swallow any errors in closing the file descriptor.
+                core.warning(`Failed to close file descriptor: ${err}`);
+            }
         }
     });
 }
