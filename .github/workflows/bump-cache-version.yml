@@ -10,7 +10,7 @@ on:
 
 jobs:
   bump-cache-version:
-    runs-on: blacksmith
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
